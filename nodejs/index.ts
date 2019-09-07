@@ -386,7 +386,7 @@ async function getNewItems(req: FastifyRequest, reply: FastifyReply<ServerRespon
             await db.release();
             return;
         }
-        const category = await getCategoryByID(db, item.category_id);
+        const category = getCategoryByID(item.category_id);
         if (category === null) {
             replyError(reply, "category not found", 404)
             await db.release();
@@ -434,7 +434,7 @@ async function getNewCategoryItems(req: FastifyRequest, reply: FastifyReply<Serv
     }
 
     const db = await getDBConnection();
-    const rootCategory = await getCategoryByID(db, rootCategoryId);
+    const rootCategory = getCategoryByID(rootCategoryId);
     if (rootCategory === null || rootCategory.parent_id !== 0) {
         replyError(reply, "category not found");
         await db.release();
@@ -511,7 +511,7 @@ async function getNewCategoryItems(req: FastifyRequest, reply: FastifyReply<Serv
             await db.release();
             return;
         }
-        const category = await getCategoryByID(db, item.category_id);
+        const category = getCategoryByID(item.category_id);
         if (category === null) {
             replyError(reply, "category not found", 404)
             await db.release();
@@ -631,7 +631,7 @@ async function getTransactions(req: FastifyRequest, reply: FastifyReply<ServerRe
 
     let itemDetails: ItemDetail[] = [];
     for (const item of items) {
-        const category = await getCategoryByID(db, item.category_id);
+        const category = getCategoryByID(item.category_id);
         if (category === null) {
             replyError(reply, "category not found", 404)
             await db.rollback();
@@ -809,7 +809,7 @@ async function getUserItems(req: FastifyRequest, reply: FastifyReply<ServerRespo
 
     let itemSimples: ItemSimple[] = [];
     for (const item of items) {
-        const category = await getCategoryByID(db, item.category_id);
+        const category = getCategoryByID(item.category_id);
         if (category === null) {
             replyError(reply, "category not found", 404)
             await db.release();
@@ -878,7 +878,7 @@ async function getItem(req: FastifyRequest, reply: FastifyReply<ServerResponse>)
         return;
     }
 
-    const category = await getCategoryByID(db, item.category_id);
+    const category = getCategoryByID(item.category_id);
     if (category === null) {
         replyError(reply, "category not found", 404)
         await db.release();
@@ -1101,7 +1101,7 @@ async function postBuy(req: FastifyRequest, reply: FastifyReply<ServerResponse>)
         return;
     }
 
-    const category = await getCategoryByID(db, targetItem.category_id);
+    const category = getCategoryByID(targetItem.category_id);
     if (category === null) {
         replyError(reply, "category id error", 500);
         await db.rollback();
@@ -1247,7 +1247,7 @@ async function postSell(req: FastifyRequest, reply: FastifyReply<ServerResponse>
 
     const db = await getDBConnection();
 
-    const category = await getCategoryByID(db, categoryId);
+    const category = getCategoryByID(categoryId);
     if (category === null || category.parent_id === 0) {
         replyError(reply, "Incorrect category ID", 400);
         await db.release();
@@ -2162,19 +2162,62 @@ async function getUserSimpleByID(db: MySQLQueryable, userID: number): Promise<Us
     return null;
 }
 
-async function getCategoryByID(db: MySQLQueryable, categoryId: number): Promise<Category | null> {
-    const [rows,] = await db.query("SELECT * FROM `categories` WHERE `id` = ?", [categoryId]);
-    for (const row of rows) {
-        const category = row as Category;
-        if (category.parent_id !== undefined && category.parent_id != 0) {
-            const parentCategory = await getCategoryByID(db, category.parent_id);
-            if (parentCategory !== null) {
-                category.parent_category_name = parentCategory.category_name
-            }
+const categories: Category[] = [
+    { id: 1, parent_id: 0, category_name: "ソファー" },
+    { id: 2, parent_id: 1, category_name: "一人掛けソファー" },
+    { id: 3, parent_id: 1, category_name: "二人掛けソファー" },
+    { id: 4, parent_id: 1, category_name: "コーナーソファー" },
+    { id: 5, parent_id: 1, category_name: "二段ソファー" },
+    { id: 6, parent_id: 1, category_name: "ソファーベッド" },
+    { id: 10, parent_id: 0, category_name: "家庭用チェア" },
+    { id: 11, parent_id: 10, category_name: "スツール" },
+    { id: 12, parent_id: 10, category_name: "クッションスツール" },
+    { id: 13, parent_id: 10, category_name: "ダイニングチェア" },
+    { id: 14, parent_id: 10, category_name: "リビングチェア" },
+    { id: 15, parent_id: 10, category_name: "カウンターチェア" },
+    { id: 20, parent_id: 0, category_name: "キッズチェア" },
+    { id: 21, parent_id: 20, category_name: "学習チェア" },
+    { id: 22, parent_id: 20, category_name: "ベビーソファ" },
+    { id: 23, parent_id: 20, category_name: "キッズハイチェア" },
+    { id: 24, parent_id: 20, category_name: "テーブルチェア" },
+    { id: 30, parent_id: 0, category_name: "オフィスチェア" },
+    { id: 31, parent_id: 30, category_name: "デスクチェア" },
+    { id: 32, parent_id: 30, category_name: "ビジネスチェア" },
+    { id: 33, parent_id: 30, category_name: "回転チェア" },
+    { id: 34, parent_id: 30, category_name: "リクライニングチェア" },
+    { id: 35, parent_id: 30, category_name: "投擲用椅子" },
+    { id: 40, parent_id: 0, category_name: "折りたたみ椅子" },
+    { id: 41, parent_id: 40, category_name: "パイプ椅子" },
+    { id: 42, parent_id: 40, category_name: "木製折りたたみ椅子" },
+    { id: 43, parent_id: 40, category_name: "キッチンチェア" },
+    { id: 44, parent_id: 40, category_name: "アウトドアチェア" },
+    { id: 45, parent_id: 40, category_name: "作業椅子" },
+    { id: 50, parent_id: 0, category_name: "ベンチ" },
+    { id: 51, parent_id: 50, category_name: "一人掛けベンチ" },
+    { id: 52, parent_id: 50, category_name: "二人掛けベンチ" },
+    { id: 53, parent_id: 50, category_name: "アウトドア用ベンチ" },
+    { id: 54, parent_id: 50, category_name: "収納付きベンチ" },
+    { id: 55, parent_id: 50, category_name: "背もたれ付きベンチ" },
+    { id: 56, parent_id: 50, category_name: "ベンチマーク" },
+    { id: 60, parent_id: 0, category_name: "座椅子" },
+    { id: 61, parent_id: 60, category_name: "和風座椅子" },
+    { id: 62, parent_id: 60, category_name: "高座椅子" },
+    { id: 63, parent_id: 60, category_name: "ゲーミング座椅子" },
+    { id: 64, parent_id: 60, category_name: "ロッキングチェア" },
+    { id: 65, parent_id: 60, category_name: "座布団" },
+    { id: 66, parent_id: 60, category_name: "空気椅子" },
+];
+
+function getCategoryByID(categoryId: number): Category | null {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return null;
+    if (category.parent_id !== undefined && category.parent_id != 0) {
+        const parentCategory = categories.find(c => c.id === category.parent_id);
+        if (parentCategory) {
+            category.parent_category_name = parentCategory.category_name
         }
-        return category;
     }
-    return null;
+    return category;
 }
 
 async function encryptPassword(password: string): Promise<string> {
