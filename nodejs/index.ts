@@ -441,11 +441,9 @@ async function getNewCategoryItems(req: FastifyRequest, reply: FastifyReply<Serv
         return;
     }
 
-    const categoryIDs: number[] = [];
-    const [rows,] = await db.query("SELECT id FROM `categories` WHERE parent_id=?", [rootCategory.id]);
-    for (const row of rows) {
-        categoryIDs.push(row.id);
-    }
+    const categoryIDs = categories
+        .filter(c => c.parent_id === rootCategory.id)
+        .map(c => c.id);
 
     const itemIDStr = req.query.item_id;
     let itemID = 0;
@@ -1971,20 +1969,13 @@ async function getSettings(req: FastifyRequest, reply: FastifyReply<ServerRespon
     const res = {
         user: null as User | null,
         payment_service_url: null as string | null,
-        categories: null as Category[] | null,
+        categories: categories,
         csrf_token: null as string | null,
     };
 
     res.user = user;
     res.payment_service_url = await getPaymentServiceURL(db);
     res.csrf_token = csrfToken;
-
-    const categories: Category[] = [];
-    const [rows] = await db.query("SELECT * FROM `categories`", []);
-    for (const row of rows) {
-        categories.push(row as Category);
-    }
-    res.categories = categories;
 
     await db.release();
 
