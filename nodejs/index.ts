@@ -15,6 +15,8 @@ import crypt from "crypto";
 import bcrypt from "bcrypt";
 import {paymentToken, shipmentCreate, shipmentRequest, shipmentStatus} from "./api";
 
+require('dotenv').config();
+
 const execFile = util.promisify(childProcess.execFile);
 
 type MySQLResultRows = Array<any> & { insertId: number };
@@ -2120,6 +2122,7 @@ function getSession(req: FastifyRequest) {
 }
 
 fastify.listen(8000, (err, _address) => {
+    console.log(process.env.MYSQL_HOST);
     if (err) {
         throw new TraceError("Failed to listening", err);
     }
