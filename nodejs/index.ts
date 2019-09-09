@@ -81,7 +81,6 @@ const ShippingsStatusDone = "done";
 const BumpChargeSeconds = 3;
 const ItemsPerPage = 48;
 const TransactionsPerPage = 10;
-const BcryptCost = 10;
 
 type Config = {
     name: string;
@@ -176,7 +175,6 @@ type Shipping = {
     to_name: string;
     from_address: string;
     from_name: string;
-    img_binary: Uint8Array,
 };
 
 type Category = {
@@ -1442,11 +1440,12 @@ async function postShip(req: FastifyRequest, reply: FastifyReply<ServerResponse>
         reserve_id: shipping.reserve_id,
     });
 
+    await fs.promises.writeFile(`../public/qrcode/${transactionalEvidence.id}.png`, img);
+
     await db.query(
-        "UPDATE `shippings` SET `status` = ?, `img_binary` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
+        "UPDATE `shippings` SET `status` = ?, `updated_at` = ? WHERE `transaction_evidence_id` = ?",
         [
             ShippingsStatusWaitPickup,
-            img,
             new Date(),
             transactionalEvidence.id,
         ]
@@ -1835,19 +1834,12 @@ async function getQRCode(req: FastifyRequest, reply: FastifyReply<ServerResponse
         return;
     }
 
-    if (shipping.img_binary.byteLength === 0) {
-        replyError(reply, "empty qrcode image")
-        await db.release();
-        return;
-    }
-
     await db.release();
 
     reply
         .code(200)
         .type("image/png")
-        .send(shipping.img_binary);
-
+        .send(getQrcode(shipping.transaction_evidence_id));
 }
 
 async function postBump(req: FastifyRequest, reply: FastifyReply<ServerResponse>) {
@@ -2269,6 +2261,10 @@ async function getShipmentServiceURL(db: MySQLQueryable): Promise<string> {
         return DefaultShipmentServiceURL;
     }
     return result;
+}
+
+async function getQrcode(id: number) {
+    return await fs.promises.readFile(`/rqcode/${id}.png`);
 }
 
 function getImageURL(imageName: string) {
